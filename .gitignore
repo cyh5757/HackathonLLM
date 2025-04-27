@@ -12,7 +12,4 @@ htmlcov
 .vs_code
 .env
 tmp.ipynb
-snack.csv
-snack_item.csv
-snack_additive.csv
-map_snack_item_additive.csv
+*.csv
