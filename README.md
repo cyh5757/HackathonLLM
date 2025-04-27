@@ -129,8 +129,8 @@ DATABASE_URL=postgresql+asyncpg://postgres:123123@localhost:5432/test
 
 ## 🏆 해커톤 및 결과 이미지
 
-![첫 결과 이미지](images\frist.png)
+![첫 결과 이미지](images/frist.png)
 
-![변경 이미지](images\last.JPG)
+![변경 이미지](images/last.JPG)
 
 
