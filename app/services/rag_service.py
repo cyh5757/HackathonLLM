@@ -9,7 +9,9 @@ from app.api.deps import SessionDep
 from app.repository import pgvector_repository
 from langchain_core.documents import Document
 from app.repository import snack_repository
-# from app.schemas.snack import SnackDetailDto
+from app.models.snack_dto import SnackDetailDto
+
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -72,24 +74,96 @@ async def get_context_only(
         "documents": documents
     } 
 
-# async def ID_search(
-#     db_session: SessionDep,
-#     doc: Document
-# ) -> Optional[SnackDetailDto]:
-#     """
-#     벡터 검색 결과의 문서(doc)에서 메타데이터에 포함된 ID를 기반으로,
-#     데이터베이스에서 상세 스낵 정보를 조회합니다.
-#     """
-#     snack_id = doc.metadata.get("id")
+async def ID_search(
+    db_session: SessionDep,
+    doc: Document
+) -> Optional[SnackDetailDto]:
+    """
+    벡터 검색 결과의 문서(doc)에서 메타데이터에 포함된 ID를 기반으로,
+    데이터베이스에서 상세 스낵 정보를 조회합니다.
+    """
+    snack_id = doc.metadata.get("id")
 
-#     if snack_id is None:
-#         raise ValueError("문서 메타데이터에 'id'가 없습니다.")
+    if snack_id is None:
+        raise ValueError("문서 메타데이터에 'id'가 없습니다.")
 
-#     snack_detail = await snack_repository.get_snack_detail_by_id(
-#         db_session=db_session,
-#         snack_id=snack_id
-#     )
-#     return snack_detail
+    snack_detail = await snack_repository.get_snack_detail_by_id(
+        db_session=db_session,
+        snack_id=snack_id
+    )
+    return snack_detail
 
 
-    
+async def get_context_and_snack_detail(
+    session: SessionDep,
+    query: str,
+    key_prefix: str = "snack",
+    field_name: str = "snack_data",
+    size: int = 10
+):
+    """
+    1. 쿼리와 관련된 컨텍스트를 검색하고,
+    2. 각 문서 ID를 통해 Snack 상세 정보를 조회해서 반환합니다.
+
+    Args:
+        session: 데이터베이스 세션
+        query: 검색 쿼리
+        key_prefix: 벡터 저장소의 키 프리픽스
+        field_name: 벡터 저장소의 필드 이름
+        size: 검색할 문서 수
+        
+    Returns:
+        context + snack 상세 정보 리스트
+    """
+
+
+    # 1. 벡터 검색
+    similar_docs: list[tuple[Document, float]] = await pgvector_repository.search_similar_memories(
+        query=query,
+        key_prefix=key_prefix,
+        field_name=field_name,
+        size=size
+    )
+
+    if not similar_docs:
+        return {
+            "context": "",
+            "found_docs": 0,
+            "documents": [],
+            "snack_details": []
+        }
+
+    # 2. context 문자열 구성
+    context = "\n\n".join([
+        f"문서 {i+1}:\n{doc.page_content}\n메타데이터: {doc.metadata}"
+        for i, (doc, _) in enumerate(similar_docs)
+    ])
+
+    documents = []
+    snack_details = []
+
+    for i, (doc, score) in enumerate(similar_docs):
+        # 3. 문서 리스트 저장
+        documents.append({
+            "index": i + 1,
+            "content": doc.page_content,
+            "metadata": doc.metadata,
+            "score": score
+        })
+
+        # 4. ID_search 통해서 스낵 상세 조회
+        snack_id = doc.metadata.get("id")
+        if snack_id:
+            snack_detail = await snack_repository.get_snack_detail_by_id(
+                db_session=session,
+                snack_id=snack_id
+            )
+            if snack_detail:
+                snack_details.append(snack_detail)
+
+    return {
+        "context": context,
+        "found_docs": len(similar_docs),
+        "documents": documents,
+        "snack_details": snack_details
+    }

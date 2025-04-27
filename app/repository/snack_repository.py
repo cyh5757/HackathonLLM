@@ -9,22 +9,22 @@ from app.models.snack_models import Snack, SnackItem
 from app.models.snack_types import AllergyKeyword
 
 
-async def get_snack_detail_by_id(db_session: AsyncSession, snack_id: int) -> Optional[SnackDetailDto]:
-    """
-    snack_id로 Snack + SnackItem + SnackAdditive까지 한방 조회하여 DTO 반환
-    """
-    stmt = (
-        select(Snack)
-        .where(Snack.id == snack_id)
-        .options(
-            joinedload(Snack.snack_item)
-            .joinedload(SnackItem.additives)
-        )
-    )
+# async def get_snack_detail_by_id(db_session: AsyncSession, snack_id: int) -> Optional[SnackDetailDto]:
+#     """
+#     snack_id로 Snack + SnackItem + SnackAdditive까지 한방 조회하여 DTO 반환
+#     """
+#     stmt = (
+#         select(Snack)
+#         .where(Snack.id == snack_id)
+#         .options(
+#             joinedload(Snack.snack_item)
+#             .joinedload(SnackItem.additives)
+#         )
+#     )
 
-    result = await db_session.exec(stmt)
-    snack = result.one_or_none()
-    return SnackDetailDto.from_model(snack) if snack else None
+#     result = await db_session.exec(stmt)
+#     snack = result.one_or_none()
+#     return SnackDetailDto.from_model(snack) if snack else None
 
 
 async def get_snack_detail_by_id(db_session: AsyncSession, snack_id: int) -> Optional[SnackDetailDto]:

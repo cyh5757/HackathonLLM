@@ -4,7 +4,8 @@ import json
 
 API_URL = "http://localhost:8000/api/v1/snacks/sse"  # 실제 백엔드 URL로 수정
 
-
+# 사용방법
+# chainlit run chainlit\main.py --port 8502
 async def handle_sse_stream(query: str, streamed_message: cl.Message):
     """
     주어진 쿼리를 SSE API에 전송하고 응답을 실시간으로 Chainlit 메시지에 스트리밍.
