@@ -1,0 +1,73 @@
+###
+#@name rag test
+POST http://127.0.0.1:8000/api/v1/snacks/test/rag/context-only
+Accept: application/json
+Content-Type:application/json
+
+{
+  "query": "재밌는거 추천점요"
+}
+
+> {%
+    const isEqual = (expect, actual) => client.assert(expect == actual, `\nexpect: ${expect}, but actual: ${JSON.stringify(actual)}`)
+    const print = (testName, response) => {
+        client.log(`\n${testName} RESPONSE\n${JSON.stringify(response, null, 2)}\n------------------------`)
+    };
+    client.test("", () => {
+        print("", response);
+        isEqual(200, response.status)
+    })
+%}
+
+###
+GET http://127.0.0.1:8000/api/v1/snacks/test
+
+> {%
+    const isEqual = (expect, actual) => client.assert(expect == actual, `\nexpect: ${expect}, but actual: ${JSON.stringify(actual)}`)
+    const print = (testName, response) => {
+        client.log(`\n${testName} RESPONSE\n${JSON.stringify(response, null, 2)}\n------------------------`)
+    };
+    client.test("", () => {
+        print("", response);
+        isEqual(200, response.status)
+    })
+%}
+
+###
+GET {{host}}/api/v1/snacks
+Accept: application/json
+Content-Type: application/json
+
+{
+}
+
+> {%
+    const isEqual = (expect, actual) => client.assert(expect == actual, `\nexpect: ${expect}, but actual: ${JSON.stringify(actual)}`)
+    const print = (testName, response) => {
+        client.log(`\n${testName} RESPONSE\n${JSON.stringify(response, null, 2)}\n------------------------`)
+    };
+    client.test("", () => {
+        print("", response);
+        isEqual(200, response.status)
+    })
+%}
+
+###
+POST http://127.0.0.1:8000/api/v1/snacks/sse
+Accept: application/json
+Content-Type: application/json
+
+{
+  "query": "안녕하세요 오늘 날씨 좋네요."
+}
+
+> {%
+    const isEqual = (expect, actual) => client.assert(expect == actual, `\nexpect: ${expect}, but actual: ${JSON.stringify(actual)}`)
+    const print = (testName, response) => {
+        client.log(`\n${testName} RESPONSE\n${JSON.stringify(response, null, 2)}\n------------------------`)
+    };
+    client.test("", () => {
+        print("", response);
+        isEqual(200, response.status)
+    })
+%}
