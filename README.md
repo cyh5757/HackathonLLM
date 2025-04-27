@@ -1,6 +1,7 @@
 # snack
 
 코드프레소 250329 팀 프로젝트
+추가 변경
 
 > 이
 > 프로젝트는 [fastapi/full-stack-fastapi-template](https://github.com/fastapi/full-stack-fastapi-template/tree/master/backend)를
