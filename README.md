@@ -172,3 +172,13 @@ Chainlit에서는 `httpx.AsyncClient`를 통해 SSE를 수신하고 출력합니
 
 이 프로젝트는 단순 문서 기반 검색을 넘어서, 구조화된 과자/첨가물 데이터를 벡터화하여 저장하고,
 LangChain + GPT-4o로 의미 있는 질의응답을 제공하는 **정형 + 생성형 통합형 RAG 시스템**입니다.
+
+# 🏛 최종 아키텍쳐
+![동작 아키텍쳐](img/llm_architecture.png)
+
+
+## 🏆 해커톤 및 결과 이미지
+
+![첫 결과 이미지](img/first.png)
+
+![변경 이미지](img/last.JPG)
