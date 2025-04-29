@@ -1,137 +1,174 @@
+# 🍘 SnackRAG: 과자/첨가물 GPT 기반 검색 시스템
 
-# 🚀 RAG 기반 과자 정보 검색 시스템
-## 🚀 코드프레소 250329 팀 프로젝트
+SnackRAG는 식품 및 첨가물 정보를 OpenAI GPT-4o를 이용해 자연어로 질문하고,
+LangChain 기반 RAG(Retrieval-Augmented Generation) 구조를 통해 실시간으로 답변하는 FastAPI + Chainlit 프로젝트입니다.
 
-## 프로젝트 개요
-이 프로젝트는 과자와 식품 첨가물에 대한 정보를 RAG(Retrieval-Augmented Generation) 기반으로 검색하고 답변하는 시스템입니다.
-이 프로젝트는 [fastapi/full-stack-fastapi-template](https://github.com/tiangolo/full-stack-fastapi-template)를 기반으로 구성되었습니다.
+---
 
-## 주요 기능
-- FastAPI 기반 백엔드 서버
-- PostgreSQL + pgvector를 활용한 벡터 데이터베이스
-- LangChain을 활용한 AI 에이전트 구현
-- Chainlit을 활용한 대화형 인터페이스
+## 🧠 기술 스택
 
-- 과자 정보 벡터 DB 저장 및 검색
-- 식품 첨가물 정보 검색
-- 알레르기 정보 제공
-- 실시간 질의응답
+- **LLM**: OpenAI GPT-4o via LangChain
+- **Vector DB**: PostgreSQL + PGVector
+- **Embedding**: `text-embedding-3-small`
+- **Backend**: FastAPI + SQLModel
+- **Frontend**: Chainlit (React 기반 LLM 채팅 UI)
+- **Streaming**: SSE (Server-Sent Events)
 
-## 기술 스택
-- **백엔드**: FastAPI, PostgreSQL, pgvector
-- **AI/ML**: LangChain, OpenAI API
-- **개발 도구**: Docker, Chainlit
-- **기타**: Python 3.12+
+---
 
-## 프로젝트 구조
-
-
-# 📦 프로젝트 세트와 실행 방법
-
-## 1. Docker로 FastAPI 서버 생성 및 실행
-
-**Docker로 백업드(Postgres + FastAPI) 서버를 실행합니다.**
-
-### 1-1. Docker 환경 준비
-- Docker Desktop 설치 필요
-- `docker-compose.yml`, `Dockerfile`이 준비되어 있어야 합니다.
-
-### 1-2. Docker 서버 실행 명령어
+## 🚀 실행 방법
 
 ```bash
-# 루트 디렉토리 (docker-compose.yml이 있는 포범) 에서 실행
+# Docker 실행
 docker-compose up --build
+
+# Chainlit 실행 (포트 8502)
+chainlit run chainlit/main.py --port 8502
 ```
-
-- Postgres + FastAPI API 서버가 자동으로 실행됩니다.
-- FastAPI 서버는 `http://localhost:8000`에서 접속할 수 있습니다.
-- Swagger 문서: `http://localhost:8000/docs`
-
-### 1-3. 콘테이너 설명
-- `postgres-pgvector`: Postgres + pgvector 확장 설치된 DB 콘테이너
-- `snack-api`: FastAPI 앱이 실행되는 콘테이너
-
-## 2. 로컬(.venv) 환경에서 Chainlit 사용 방법
-
-Chainlit은 **로컬 개발용**입니다. (FastAPI 서버는 Docker에서 따뜻도로 통신)
-
-### 2-1. 가상환경 생성 및 활성화
-
-```bash
-# Python 3.12 기준
-python3.12 -m venv .venv
-.venv\Scripts\activate  # 윈도우
-# 또는
-source .venv/bin/activate  # 맵/리누스
-```
-
-### 2-2. 패키지 설치
-
-```bash
-# 의존성 설치
-pip install --upgrade pip
-pip install uv
-uv sync
-```
-
-**다시: 새로운 패키지 추가시**
-
-```bash
-uv add 패키지명
-```
-
-### 2-3. Chainlit 앱 실행
-
-```bash
-# .venv 활성화 후
-# scripts 폴더의 파일은 개별적으로 진행함.
-set PYTHONPATH=.
-chainlit run scripts/chainlit_app.py --port 4785
-# 아래 처럼 사용하는 걸 권장함 port 번호는 겹치지 안흔 것으로 사용
-chainlit run chainlit/main.py --port 8501
-```
-
-- Chainlit 웹은 `http://localhost:4785`에서 접속합니다.
-- 백업드는 Docker로 따뜻되는 FastAPI 서버(`http://localhost:8000`)를 가리고 통신합니다.
 
 ---
 
-# 📋 참고
+## 🔍 주요 API
 
-- **환경변수 설정**  
-  `.env` 파일이 필요하며, 예시로는 다음을 포함합니다:
+| Endpoint | 설명 |
+|----------|------|
+| `/api/v1/snacks/test/rag` | 쿼리 기반 GPT-4 응답 생성 |
+| `/api/v1/snacks/sse` | SSE 기반 스트리밍 응답 |
+| `/api/v1/snacks/test/rag/context-only` | GPT 호출 없이 유사 문서만 검색 |
 
-```env
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=123123
-POSTGRES_DB=test
-OPENAI_API_KEY=your-openai-key
-DATABASE_URL=postgresql+asyncpg://postgres:123123@localhost:5432/test
+---
+
+## 🧪 예시 질문
+
+- "MSG가 들어간 과자를 알려줘"
+- "아이들에게 안전한 과자를 추천해줘"
+- "이 첨가물은 어떤 용도인가요?"
+
+---
+
+## 🗂️ 폴더 구조
+
+- `app/` - 백엔드 전체 구성
+- `repository/` - PGVector 및 DB 액세스
+- `services/` - RAG 로직, GPT 호출
+- `chainlit/` - 프론트엔드 UI
+- `sql/` - 데이터 초기화 및 임베딩 대상
+---
+
+## 🧠 RAG 시스템 구성
+
+SnackRAG는 Retrieval-Augmented Generation 구조를 다음과 같이 구현합니다:
+
+```text
+[User Query]
+    ↓
+[Retriever] PGVector로 유사 문서 검색
+    ↓
+[Context Builder] 관련 정보 문자열 구성
+    ↓
+[Generator] LangChain 기반 GPT-4o 호출
+    ↓
+[Streaming Response] Chainlit 또는 FastAPI를 통해 SSE 전송
 ```
 
-- **주의사항**
-  - Chainlit은 자체 DB 연결 기능이 있는데, 언제든 에러를 피하려면 `.chainlit/config.toml`에서 DB 연결 기능을 비활성화 하는 것을 권장합니다.
-  - FastAPI 서버를 따뜻 통신해야 Chainlit과 정적으로 관리됩니다.
+- 문서 임베딩: `OpenAIEmbeddings(text-embedding-3-small)`
+- LLM 응답: `ChatOpenAI(model="gpt-4o")`
+- 벡터 검색: cosine 유사도 기반
+- 문맥 주입: 프롬프트 템플릿 내 `{context}` 활용
 
 ---
 
-# ✨ 요약 정리
+## 🔎 데이터베이스 모델 개요
 
-1. Docker로 FastAPI + Postgres 서버를 먼저 띄운다.
-2. 로컬(.venv) 환경에서 Chainlit을 실행한다.
-3. Chainlit은 FastAPI 서버를 바라보며 실시간으로 답변을 받는다.
+| 테이블 | 설명 |
+|--------|------|
+| `snack` | 과자 기본 정보 |
+| `snack_additive` | 첨가물 정보 및 등급 |
+| `snack_item` | 과자별 영양 성분 |
+| `map_snack_item_additive` | 과자-첨가물 관계 N:M 매핑 |
+| `pg_embedding` | 벡터화된 문서와 메타데이터 저장소 |
 
 ---
 
-(추가로 docker-compose 실행시 주의사항이나 Chainlit 환경변수 세팅 포함된 버전을 웹역을 간단하게 변경해주기를 원하면 다시 요청해주세요!)
-# 🏛 최종 아키텍쳐
-![동작 아키텍쳐](img/llm_architecture.png)
+## 🧪 테스트
 
+```bash
+pytest tests/
+```
 
-## 🏆 해커톤 및 결과 이미지
+단위 테스트 예시:
+- RAG 응답이 정상적으로 생성되는지 확인
+- 응답이 문자열이고, 필수 키워드를 포함하는지 검증
 
-![첫 결과 이미지](img/first.png)
+---
 
-![변경 이미지](img/last.JPG)
+## 📦 향후 개선 방향
 
+- ✅ LangSmith 추적 활성화
+- ✅ 문서 relevance 평가 모델 고도화 (re-ranking)
+- ✅ 사용자 프로파일 기반 추천 시스템 접목
+- ✅ 프롬프트 다양화 및 안전성 체크 모델 추가
 
+---
+
+## 🧠 RAG 시스템 상세 설명
+
+이 프로젝트는 Retrieval-Augmented Generation(RAG) 구조를 기반으로 다음 단계를 따릅니다:
+
+### 1. 사용자 질문 입력
+Chainlit 또는 FastAPI API를 통해 사용자 자연어 질문(query)을 입력받습니다.
+
+### 2. 문서 검색 (Retriever)
+`app/repository/pgvector_repository.py`에서 PGVector를 이용해 사용자 질문을 임베딩하고,
+cosine similarity 기반으로 관련 문서를 검색합니다.
+
+- 사용 임베딩 모델: `text-embedding-3-small`
+- 벡터 저장소: PostgreSQL + PGVector
+
+### 3. 문맥 구성 (Context Builder)
+검색된 문서 리스트는 `app/services/rag_service_test.py`에서 LangChain의 `Document` 형식으로 처리되고,
+프롬프트 내 `{context}` 자리에 삽입됩니다.
+
+```python
+context = "\n\n".join([
+  f"문서 {i + 1}:\n{doc.page_content}\n메타데이터: {doc.metadata}"
+])
+```
+
+### 4. GPT 응답 생성 (Generator)
+LangChain의 `ChatOpenAI(model="gpt-4o")`를 사용해 완성된 프롬프트를 GPT에게 전달합니다.
+응답은 실시간으로 토큰 단위로 스트리밍됩니다 (`StreamingResponse`).
+
+### 5. 실시간 응답 전송
+`/snacks/sse` 또는 `/snacks/test/rag/context` 엔드포인트를 통해 사용자에게 실시간 전송됩니다.
+Chainlit에서는 `httpx.AsyncClient`를 통해 SSE를 수신하고 출력합니다.
+
+---
+
+## 📁 폴더별 RAG 관련 설명
+
+### 📂 `app/services`
+
+- **`rag_service_test.py`**: RAG의 핵심 구현 위치. 문서 검색 → 문맥 구성 → GPT 응답 생성.
+- **`pgvector_service.py`**: LLM 기반 문서 relevance 재선정 (LLM-based re-ranking).
+- **`rag_service.py`**: 검색된 문서 + DB 상세정보를 함께 응답 (혼합형 응답용).
+- **`generized_metadate_by_ID.py`**: LLM을 통해 벡터 문서의 메타데이터 생성 자동화.
+
+### 📂 `app/api`
+
+- **`routes/snacks.py`**: `/snacks/test/rag`, `/snacks/sse` 등 API 엔드포인트 정의.
+- **`dto/models.py`**: RAG 응답 형식 정의 (`SnackContextPayload`, `SnackRagDocument` 등).
+- **`deps.py`**: DB 세션 및 의존성 주입 정의.
+
+### 📂 `app/core`
+
+- **`agent_tools.py`**: GPT-4o 모델, OpenAI 임베딩 모델, PGVector 벡터스토어 정의.
+- **`prompt.py`**: GPT 입력용 프롬프트 템플릿 정의 (`SEARCH_SELECT_INSTRUCTIONS`, `RAG_PROMPT`).
+- **`db.py` / `config.py`**: DB 연결 설정 및 환경 변수 로딩 담당.
+
+---
+
+## 📌 요약
+
+이 프로젝트는 단순 문서 기반 검색을 넘어서, 구조화된 과자/첨가물 데이터를 벡터화하여 저장하고,
+LangChain + GPT-4o로 의미 있는 질의응답을 제공하는 **정형 + 생성형 통합형 RAG 시스템**입니다.
