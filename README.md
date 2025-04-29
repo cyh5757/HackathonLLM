@@ -124,7 +124,8 @@ DATABASE_URL=postgresql+asyncpg://postgres:123123@localhost:5432/test
 ---
 
 (추가로 docker-compose 실행시 주의사항이나 Chainlit 환경변수 세팅 포함된 버전을 웹역을 간단하게 변경해주기를 원하면 다시 요청해주세요!)
-
+# 🏛 최종 아키텍쳐
+![동작 아키텍쳐](img/llm_architecture.png)
 
 
 ## 🏆 해커톤 및 결과 이미지
