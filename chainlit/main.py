@@ -1,8 +1,15 @@
+import asyncio
+import sys
 import chainlit as cl
 import httpx
 import json
 
-API_URL = "http://localhost:8000/api/v1/snacks/sse"  # 실제 백엔드 URL로 수정
+API_URL = "http://localhost:8000/api/v1/snacks/test"  # 실제 백엔드 URL로 수정
+
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 
 # 사용방법
 # chainlit run chainlit\main.py --port 8502
@@ -15,8 +22,11 @@ async def handle_sse_stream(query: str, streamed_message: cl.Message):
             async with client.stream(
                 "POST",
                 API_URL,
-                headers={"Content-Type": "application/json", "Accept": "application/json"},
-                json={"query": query}
+                headers={
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                },
+                json={"query": query},
             ) as response:
 
                 async for line in response.aiter_lines():
@@ -45,7 +55,9 @@ async def handle_sse_stream(query: str, streamed_message: cl.Message):
 
 @cl.on_chat_start
 async def start():
-    await cl.Message(content="🤖 안녕하세요! 질문을 입력하시면 바로 도와드릴게요.").send()
+    await cl.Message(
+        content="🤖 안녕하세요! 질문을 입력하시면 바로 도와드릴게요."
+    ).send()
 
 
 @cl.on_message
