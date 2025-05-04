@@ -1,18 +1,14 @@
-import asyncio
-import sys
 import chainlit as cl
 import httpx
 import json
 
-API_URL = "http://localhost:8000/api/v1/snacks/test"  # 실제 백엔드 URL로 수정
+# SSE용 엔드포인트
+SSE_API_URL = "http://localhost:8000/api/v1/snacks/sse"
+
+# RAG용 엔드포인트
+RAG_API_URL = "http://localhost:8000/api/v1/snacks/test/rag"
 
 
-if sys.platform == "win32":
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
-
-# 사용방법
-# chainlit run chainlit\main.py --port 8502
 async def handle_sse_stream(query: str, streamed_message: cl.Message):
     """
     주어진 쿼리를 SSE API에 전송하고 응답을 실시간으로 Chainlit 메시지에 스트리밍.
@@ -21,7 +17,7 @@ async def handle_sse_stream(query: str, streamed_message: cl.Message):
         try:
             async with client.stream(
                 "POST",
-                API_URL,
+                SSE_API_URL,
                 headers={
                     "Content-Type": "application/json",
                     "Accept": "application/json",
@@ -37,7 +33,7 @@ async def handle_sse_stream(query: str, streamed_message: cl.Message):
                     try:
                         data = json.loads(data_str)
                     except json.JSONDecodeError:
-                        continue  # skip malformed data
+                        continue
 
                     status = data.get("status")
                     content = data.get("data", "")
@@ -53,21 +49,45 @@ async def handle_sse_stream(query: str, streamed_message: cl.Message):
             await cl.Message(content=f"❌ 서버 오류: `{str(e)}`").send()
 
 
+async def handle_rag_query(query: str, streamed_message: cl.Message):
+    """
+    주어진 쿼리를 /test/rag API에 POST 요청하고 응답을 출력.
+    """
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(
+                RAG_API_URL,
+                headers={"Content-Type": "application/json"},
+                json={"query": query},
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                answer = result.get("answer", "🤖 답변이 없습니다.")
+                await streamed_message.stream_token(answer)
+                await streamed_message.update()
+            else:
+                await cl.Message(content=f"❌ 서버 오류: {response.status_code}").send()
+
+        except Exception as e:
+            await cl.Message(content=f"❌ 요청 실패: `{str(e)}`").send()
+
+
 @cl.on_chat_start
 async def start():
     await cl.Message(
-        content="🤖 안녕하세요! 질문을 입력하시면 바로 도와드릴게요."
+        content="🤖 안녕하세요! 질문을 입력하시면 도와드릴게요.\n\n- `rag:`로 시작하면 RAG 기반 응답\n- 그 외는 SSE 기반 응답"
     ).send()
 
 
 @cl.on_message
 async def on_message(message: cl.Message):
-    """
-    사용자의 메시지를 받아 SSE API에 전달하고 실시간 응답을 보여주는 핸들러.
-    """
-    # await cl.Message(content="🤖 질문을 처리 중입니다...").send()
-
-    streamed_message = cl.Message(content="")  # 응답 누적 메시지
+    query = message.content.strip()
+    streamed_message = cl.Message(content="")
     await streamed_message.send()
 
-    await handle_sse_stream(message.content, streamed_message)
+    if query.lower().startswith("rag:"):
+        pure_query = query[4:].strip()
+        await handle_rag_query(pure_query, streamed_message)
+    else:
+        await handle_sse_stream(query, streamed_message)

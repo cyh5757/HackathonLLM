@@ -19,11 +19,10 @@ async def search_pgvector(
     query: str,
 ) -> list[DocumentRes] | None:
     # 1. pgvector에서 벡터 검색
-    similar_memory_list: list[tuple[Document, float]] = await pgvector_repository.search_similar_memories(
-        query=query,
-        key_prefix="sample_key",
-        field_name="my_data",
-        size=10
+    similar_memory_list: list[tuple[Document, float]] = (
+        await pgvector_repository.search_similar_memories(
+            query=query, key_prefix="sample_key", field_name="my_data", size=10
+        )
     )
 
     # 2. LLM을 이용해 relevance 높은 것만 골라내기
@@ -51,22 +50,21 @@ async def _select_relevant_search_results_by_llm(
     )
 
     # 1. prompt 만드는 부분 수정
-    prompt = ChatPromptTemplate.from_template(
-        SEARCH_SELECT_INSTRUCTIONS
-    )
+    prompt = ChatPromptTemplate.from_template(SEARCH_SELECT_INSTRUCTIONS)
 
     # 2. structured LLM
     structured_llm = prompt | agent_tools.llm.with_structured_output(SearchSelectResult)
 
     # 3. ainvoke 할 때 입력값 넣기
-    result: SearchSelectResult = await structured_llm.ainvoke({
-        "datetime": datetime.now(ZoneInfo("Asia/Seoul")).strftime("%A, %B %d, %Y, %I:%M %p"),
-        "search_results": formatted_results,
-        "query": query
-    })
+    result: SearchSelectResult = await structured_llm.ainvoke(
+        {
+            "datetime": datetime.now(ZoneInfo("Asia/Seoul")).strftime(
+                "%A, %B %d, %Y, %I:%M %p"
+            ),
+            "search_results": formatted_results,
+            "query": query,
+        }
+    )
 
     # 5. 필요한 index만 추출
     return [search_results[i] for i in result.indices if i < len(search_results)]
-
-
-

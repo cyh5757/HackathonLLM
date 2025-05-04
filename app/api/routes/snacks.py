@@ -61,8 +61,14 @@ async def ask_query(
 
 
 @router.post("/update-vector-db")
-async def update_vector_db(session: SessionDep) -> SimpleResponseMessage:
+async def update_vector_db(
+    *, session: SessionDep  # 의존성 주입
+) -> SimpleResponseMessage:
+    """
+    문서를 벡터 DB에 저장하는 API
+    """
     count = await load_db_data_to_vectordb(session)
+    await session.commit()
     return SimpleResponseMessage(
         message=f"{count}개의 문서가 벡터 DB에 저장되었습니다."
     )
