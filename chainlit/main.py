@@ -1,19 +1,29 @@
 import chainlit as cl
+import traceback
+
 import httpx
 import json
 
+# 2375 암호화 x
+# 2376 암호화 o
+# 80 8080 http
+# 443 https
+# chainlit run main.py --port 8501
+
 # SSE용 엔드포인트
 SSE_API_URL = "http://localhost:8000/api/v1/snacks/sse"
-
 # RAG용 엔드포인트
 RAG_API_URL = "http://localhost:8000/api/v1/snacks/test/rag"
+
+# Timeout 설정 (connect, read, write, pool 각각)
+custom_timeout = httpx.Timeout(connect=10.0, read=60.0, write=10.0, pool=5.0)
 
 
 async def handle_sse_stream(query: str, streamed_message: cl.Message):
     """
     주어진 쿼리를 SSE API에 전송하고 응답을 실시간으로 Chainlit 메시지에 스트리밍.
     """
-    async with httpx.AsyncClient(timeout=None) as client:
+    async with httpx.AsyncClient(timeout=custom_timeout) as client:
         try:
             async with client.stream(
                 "POST",
@@ -46,14 +56,14 @@ async def handle_sse_stream(query: str, streamed_message: cl.Message):
                         break
 
         except Exception as e:
-            await cl.Message(content=f"❌ 서버 오류: `{str(e)}`").send()
+            error_detail = traceback.format_exc()
+            await cl.Message(
+                content=f"❌ SSE 요청 실패:\n```\n{error_detail}\n```"
+            ).send()
 
 
 async def handle_rag_query(query: str, streamed_message: cl.Message):
-    """
-    주어진 쿼리를 /test/rag API에 POST 요청하고 응답을 출력.
-    """
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=custom_timeout) as client:
         try:
             response = await client.post(
                 RAG_API_URL,
@@ -63,14 +73,15 @@ async def handle_rag_query(query: str, streamed_message: cl.Message):
 
             if response.status_code == 200:
                 result = response.json()
-                answer = result.get("answer", "🤖 답변이 없습니다.")
+                answer = result.get("message", "🤖 답변이 없습니다.")
                 await streamed_message.stream_token(answer)
                 await streamed_message.update()
             else:
                 await cl.Message(content=f"❌ 서버 오류: {response.status_code}").send()
 
         except Exception as e:
-            await cl.Message(content=f"❌ 요청 실패: `{str(e)}`").send()
+            error_detail = traceback.format_exc()
+            await cl.Message(content=f"❌ 요청 실패:\n```\n{error_detail}\n```").send()
 
 
 @cl.on_chat_start

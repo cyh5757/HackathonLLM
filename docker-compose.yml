@@ -33,6 +33,12 @@ services:
         condition: service_healthy
     env_file:
       - .env
+    develop:
+      watch:
+        - action: sync+restart
+          path: .
+          target: /app
+
 
 volumes:
   postgres_data:

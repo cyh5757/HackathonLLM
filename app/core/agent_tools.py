@@ -9,7 +9,7 @@ from langchain_postgres.vectorstores import DistanceStrategy
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-llm = ChatOpenAI(model_name="gpt-4o", temperature=0)
+llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0)
 
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small", dimensions=1536)
 
@@ -23,5 +23,5 @@ vector_store = PGVector(
     create_extension=True,  # "CREATE EXTENSION IF NOT EXISTS vector;" 실행
     pre_delete_collection=False,  # 기존 테이블 데이터(레코드) 삭제
     use_jsonb=True,
-    async_mode=True
+    async_mode=True,
 )
