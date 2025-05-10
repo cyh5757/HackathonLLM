@@ -8,7 +8,7 @@ import json
 # 2376 암호화 o
 # 80 8080 http
 # 443 https
-# chainlit run main.py --port 8501
+# chainlit run chainlit/main.py --port 8501
 
 # SSE용 엔드포인트
 SSE_API_URL = "http://localhost:8000/api/v1/snacks/sse"

@@ -103,6 +103,9 @@ cot = "full"
 [features.data]
 enabled = true
 
+[database]
+enable = false
+
 [data.db]
 provider = "postgres"
 url = "postgresql://chainlit_postgre:123123@localhost:4444/snack"
