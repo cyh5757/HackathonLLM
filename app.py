@@ -1,6 +1,7 @@
 import uuid, os
 from dotenv import load_dotenv
 from typing import TypedDict
+
 # from typing import Annotated
 
 from openai import OpenAI
@@ -11,13 +12,14 @@ from langchain_community.tools.tavily_search import TavilySearchResults
 
 ## langsmith
 from langsmith import Client
+
 # from langchain_teddynote import logging
 from langchain_core.tracers.context import collect_runs
 
 
-from langgraph.graph import END, StateGraph # Ensure END is imported
-from langgraph.checkpoint.memory import MemorySaver # type: ignore
-from langgraph.errors import GraphRecursionError # type: ignore
+from langgraph.graph import END, StateGraph  # Ensure END is imported
+from langgraph.checkpoint.memory import MemorySaver  # type: ignore
+from langgraph.errors import GraphRecursionError  # type: ignore
 
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.output_parsers import StrOutputParser
@@ -45,33 +47,38 @@ from typing import Dict, Optional
 
 # .env 파일 활성화 & API KEY 설정
 load_dotenv(override=True)
-openai_api_key = os.getenv('OPENAI_API_KEY')
+openai_api_key = os.getenv("OPENAI_API_KEY")
 # logging.langsmith("rag_chatbot_test")
 
 llm_4o = ChatOpenAI(model="gpt-4o", temperature=0)
 
+
 class GraphState(TypedDict):
-    question: str # 질문
+    question: str  # 질문
     context: list | str  # 문서의 검색 결과
     organize_reference: str  # 문서의 정리된 결과
-    
+
+
 store = {}
 
-# 세션 ID를 기반으로 세션 기록을 가져오는 
+
+# 세션 ID를 기반으로 세션 기록을 가져오는
 def get_session_history(session_ids):
     if session_ids not in store:  # 세션 ID가 store에 없는 경우
         # 새로운 ChatMessageHistory 객체를 생성하여 store에 저장
         store[session_ids] = ChatMessageHistory()
     return store[session_ids]  # 해당 세션 ID에 대한 세션 기록 반환
 
+
 ############################################
 ################### tool ###################
 #############################################
 
+
 def create_agent_executor(
     db_uri: str,
     selected_tables: list[str],
-    model_name: str = "gpt-4o",
+    model_name: str = "gpt-3.5-turbo",
     temperature: float = 0.0,
     verbose: bool = True,
 ):
@@ -129,7 +136,8 @@ def query_snack_recommendation(
 
 
 # PostgreSQL 연결 설정
-DB_URI = "postgresql://database-1.cluster-cwexj9zpudla.ap-northeast-2.rds.amazonaws.com:5432/postgres?user=postgres&password=%2AXCLmfg%24x3%2AHClmThB7N07a%3FBZ%3C2"
+
+DB_URI = "postgresql+psycopg://postgres:123123@postgres:5432/test"
 TABLES = ["snack", "snack_additive"]
 
 # SQL Agent 생성
@@ -141,23 +149,29 @@ agent_executor = create_agent_executor(
     verbose=False,
 )
 
+
 @tool
 def sql_search(input):
-    """ SQL 쿼리 생성기 """
+    """SQL 쿼리 생성기"""
     result_text = query_snack_recommendation(agent_executor, input, limit=5)
     return result_text
 
+
 @tool
 def vector_search(input):
-    """ 벡터 쿼리 생성기 """
+    """벡터 쿼리 생성기"""
     search_tool = TavilySearchResults(max_results=5)
     search_result = search_tool.invoke({"query": input})
     return search_result
 
+
 # 자료구조 정의 (pydantic)
 class Decision_maker(BaseModel):
-    reference: str = Field(description="Choose the most relevant reference from multiple sources and organize it for LLM to use as final reference material.")
-    
+    reference: str = Field(
+        description="Choose the most relevant reference from multiple sources and organize it for LLM to use as final reference material."
+    )
+
+
 # 출력 파서 정의
 decision_maker_output_parser = JsonOutputParser(pydantic_object=Decision_maker)
 format_instructions = decision_maker_output_parser.get_format_instructions()
@@ -177,23 +191,26 @@ verifier_prompt = PromptTemplate(
     partial_variables={"format_instructions": format_instructions},
 )
 
+
 def decision_maker(state: GraphState) -> GraphState:
     chain = verifier_prompt | llm_4o | decision_maker_output_parser
-    verified = chain.invoke({"query": state["question"], "retrieved_data": state["context"]})
-    state["organize_reference"] = verified['reference']
+    verified = chain.invoke(
+        {"query": state["question"], "retrieved_data": state["context"]}
+    )
+    state["organize_reference"] = verified["reference"]
     return state
 
 
 @tool
 def decision_maker_A(question, context):
-    """ Choose the most relevant reference from multiple sources and organize it for LLM to use as final reference material. """
+    """Choose the most relevant reference from multiple sources and organize it for LLM to use as final reference material."""
     chain = verifier_prompt | llm_4o | decision_maker_output_parser
     verified = chain.invoke({"query": question, "retrieved_data": context})
     return verified
 
 
 def llm_answer(state: GraphState) -> GraphState:
-    
+
     # 프롬프트를 생성합니다.
     prompt = PromptTemplate.from_template(
         """
@@ -212,10 +229,10 @@ def llm_answer(state: GraphState) -> GraphState:
 
             #Answer:
             """
-                )
+    )
 
     llm = ChatOpenAI(model_name="gpt-4o", temperature=0)
-    
+
     # 프롬프트, 모델, 출력 파서를 체이닝합니다.
     chain = prompt | llm | StrOutputParser()
 
@@ -226,22 +243,25 @@ def llm_answer(state: GraphState) -> GraphState:
         input_messages_key="question",  # 사용자의 질문이 템플릿 변수에 들어갈 key
         history_messages_key="chat_history",  # 기록 메시지의 키
     )
-    
+
     # 상태에서 질문과 대화 기록을 가져옵니다.
     input_data = {
-        'question': state["question"],
-        'chat_history': itemgetter("chat_history"),
-        'context': state["context"]
+        "question": state["question"],
+        "chat_history": itemgetter("chat_history"),
+        "context": state["context"],
     }
 
-    response = rag_with_history.invoke(input_data, config={"configurable": {"session_id": "rag123"}})
-    
+    response = rag_with_history.invoke(
+        input_data, config={"configurable": {"session_id": "rag123"}}
+    )
+
     return GraphState(
         answer=response,
         context=state["context"],
         question=state["question"],
     )
-    
+
+
 tools = [sql_search, vector_search]
 
 agent_prompt = ChatPromptTemplate.from_messages(
@@ -254,7 +274,7 @@ agent_prompt = ChatPromptTemplate.from_messages(
             You can use each of them or both of them.
             After searching, you will get the search results and using `decision_maker` to choose the most relevant reference from multiple sources and organize it for LLM to use as final reference material.
             After that, you will answer the question based on the organized reference.
-            """
+            """,
         ),
         ("placeholder", "{chat_history}"),
         ("human", "{input}"),
@@ -262,10 +282,11 @@ agent_prompt = ChatPromptTemplate.from_messages(
     ]
 )
 
+
 # agent 함수 수정 - stream 대신 결과를 반환하도록 변경
 def agent(input):
     agent = create_tool_calling_agent(llm_4o, tools, agent_prompt)
-    
+
     agent_executor = AgentExecutor(
         agent=agent,
         tools=tools,
@@ -273,31 +294,32 @@ def agent(input):
         max_iterations=100,
         max_execution_time=100,
         handle_parsing_errors=True,
-        return_intermediate_steps=True
+        return_intermediate_steps=True,
     )
-    
+
     agent_with_history = RunnableWithMessageHistory(
         agent_executor,
         get_session_history,  # 세션 기록을 가져오는 함수
         history_messages_key="chat_history",  # 기록 메시지의 키
     )
-    
+
     result = agent_with_history.invoke(
-        {"input": input},
-        config={"configurable": {"session_id": '123'}}
+        {"input": input}, config={"configurable": {"session_id": "123"}}
     )
-    
+
     return result
 
+
 ################ chainlit ################
+
 
 @cl.on_message
 async def run_convo(message: cl.Message):
     async with cl.Step(name="langgraph", type="llm") as step:
         step.input = message.content
-        
+
         user_id = str(uuid.uuid4())
-        
+
         config = RunnableConfig(
             recursion_limit=20, configurable={"thread_id": user_id, "user_id": user_id}
         )
@@ -308,18 +330,18 @@ async def run_convo(message: cl.Message):
             with collect_runs() as cb:
                 # agent 함수 호출 및 결과 처리
                 result = agent(inputs)
-                
+
                 # 중간 단계 정보 기록
-                if 'intermediate_steps' in result:
-                    for i, step_result in enumerate(result['intermediate_steps']):
+                if "intermediate_steps" in result:
+                    for i, step_result in enumerate(result["intermediate_steps"]):
                         step.update(
                             elements=[
                                 cl.Text(name=f"Step {i+1}", content=str(step_result))
                             ]
                         )
-                
-                answer = result['output']  # 최종 출력 가져오기
-                
+
+                answer = result["output"]  # 최종 출력 가져오기
+
                 # 단계별 처리 상태 업데이트
                 step.output = answer
 

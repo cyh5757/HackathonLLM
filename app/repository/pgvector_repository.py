@@ -15,10 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 async def search_similar_memories(
-    query: str,
-    key_prefix: str,
-    field_name: str,
-    size: int
+    query: str, key_prefix: str, field_name: str, size: int
 ) -> List[Tuple[Document, float]]:
     embedding_result = await agent_tools.embeddings.aembed_documents([query])
     query_vector: list[float] = embedding_result[0]
@@ -26,13 +23,14 @@ async def search_similar_memories(
     # TODO
     # filter_clause = {"prefix": {"$eq": key_prefix}, "field_name": {"$eq": field_name}}
 
-    results: List[Tuple[Document, float]] = await agent_tools.vector_store.asimilarity_search_with_score_by_vector(
-        embedding=query_vector,
-        k=size,
-        filter={}
+    results: List[Tuple[Document, float]] = (
+        await agent_tools.vector_store.asimilarity_search_with_score_by_vector(
+            embedding=query_vector, k=size, filter={}
+        )
     )
     logger.info(
-        f"\n[_search_similar_memories]Search similar memories \n{[(x[0].id, x[0].page_content) for x in results]}\n")
+        f"\n[_search_similar_memories]Search similar memories \n{[(x[0].id, x[0].page_content) for x in results]}\n"
+    )
     return results
 
 
@@ -59,13 +57,14 @@ async def update_memory(
             .values(
                 cmetadata=doc.metadata,
                 modified_at=datetime.now(),
-                modified_by=key_prefix
+                modified_by=key_prefix,
             )
         )
         await db_session.execute(stmt)
 
     logger.info(
-        f"\n[_update_memory] Updated memory_type={memory_type}, prefix={key_prefix}, ids={ids}\n{new_memory.metadata}\n")
+        f"\n[_update_memory] Updated memory_type={memory_type}, prefix={key_prefix}, ids={ids}\n{new_memory.metadata}\n"
+    )
 
 
 async def insert_memory(
@@ -87,6 +86,8 @@ async def insert_memory(
         texts=[doc.page_content],
         embeddings=[query_vector],
         metadatas=[doc.metadata],
-        ids=[new_key]
+        ids=[new_key],
     )
-    logger.info(f"\n[_insert_memory] Inserted prefix={key_prefix}, id={new_key}\n{doc}\n")
+    logger.info(
+        f"\n[_insert_memory] Inserted prefix={key_prefix}, id={new_key}\n{doc}\n"
+    )

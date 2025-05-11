@@ -13,8 +13,12 @@ from app.models import snack_types
 from app.models.snack_dto import SnackDetailDto
 from app.repository import snack_repository
 from app.repository.snack_vector_loader import load_db_data_to_vectordb
-from app.services import rag_service_test  # 테스트용 서비스 추가
+from app.services import rag_service_test, run_agent  # 테스트용 서비스 추가
 from app.services.rag_service_test import get_rag_response_with_context
+
+from pydantic import BaseModel
+from app.core import agent_tools  # 각 기능 모듈이 이곳에 정의되어 있다고 가정
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -117,3 +121,16 @@ async def test_context_only_query(
     result = await rag_service_test.get_context_only(session=session, query=query)
 
     return result
+
+
+@router.post("/test/agent")
+async def test_agent(
+    *,
+    request: SseReq,
+    session: SessionDep,
+):
+    """
+    LangChain Agent 기반 질의 응답 실행
+    """
+    result = await run_agent.run_agent_full(request.query)
+    return SimpleResponseMessage(message=result["output"])

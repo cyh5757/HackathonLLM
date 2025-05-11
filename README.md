@@ -49,8 +49,8 @@ chainlit run chainlit/main.py --port 8502
 ## 🗂️ 폴더 구조
 
 - `app/` - 백엔드 전체 구성
-- `repository/` - PGVector 및 DB 액세스
-- `services/` - RAG 로직, GPT 호출
+- `app/repository/` - PGVector 및 DB 액세스
+- `app/services/` - RAG 로직, GPT 호출
 - `chainlit/` - 프론트엔드 UI
 - `sql/` - 데이터 초기화 및 임베딩 대상
 ---
