@@ -4,6 +4,7 @@ from langchain_postgres import PGVector
 from app.repository import pgvector_repository
 from app.services.rag_service_test import SNACK_RAG_PROMPT
 from langchain_core.prompts import ChatPromptTemplate
+from app.core.prompt import rerank_prompt
 from langchain_core.documents import Document
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain.agents import tool
@@ -86,6 +87,25 @@ async def vector_search(input: str) -> str:
     docs: list[Document] = await retriever.ainvoke(input)
     return "\n---\n".join([doc.page_content for doc in docs])
 
+async def vector_search_rerank(input: str) -> str:
+    docs: list[Document] = await retriever.ainvoke(input)
+    
+    reranked = []
+    for doc in docs:
+        try:
+            response = await (rerank_prompt | llm).ainvoke({"query": input, "document": doc.page_content})
+            score_str = response.content.split("점수:")[1].split(",")[0].strip()
+            score = float(score_str)
+        except Exception:
+            score = 0.0
+
+        reranked.append((doc, score))
+
+    # 점수 기준 내림차순 정렬
+    reranked.sort(key=lambda x: x[1], reverse=True)
+    top_docs = reranked[:5]
+
+    return "\n---\n".join([doc.page_content for doc, _ in top_docs])
 
 class Decision_maker(BaseModel):
     reference: str = Field(
@@ -202,8 +222,14 @@ if __name__ == "__main__":
     async def test_vector_search():
         print("\n🧪 [Vector Search 테스트]")
         query = "아이들이 먹기 안전한 과자 알려줘"
-        docs: list[Document] = await vector_store.asimilarity_search(query, k=5)
-        print("\n".join([doc.page_content for doc in docs]))
+        result = await vector_search(query)
+        print("결과:\n", result)
+
+    async def test_vector_search_rerank():
+        print("\n🧪 [Vector Search Rerank 테스트]")
+        query = "아이들이 먹기 안전한 과자 알려줘"
+        result = await vector_search_rerank(query)
+        print("결과:\n", result)
 
     async def test_decision_maker():
         print("\n🧪 [Decision Maker 테스트]")

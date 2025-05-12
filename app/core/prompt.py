@@ -1,5 +1,5 @@
 from typing import List
-
+from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
 SEARCH_SELECT_INSTRUCTIONS = """\
@@ -29,3 +29,14 @@ class SearchSelectResult(BaseModel):
         ...,
         description="A list containing the indices of the search results that are relevant to the user query, ordered by relevance. Returns an empty list if no results are relevant."
     )
+
+
+rerank_prompt = ChatPromptTemplate.from_template(
+    """
+    사용자 질문: {query}
+    문서 내용: {document}
+
+    이 문서가 질문에 답하는 데 얼마나 유용한지를 1~10 점으로 평가하고, 이유도 간단히 설명해줘.
+    응답 형식: "점수: <숫자>, 이유: <텍스트>"
+    """
+)
