@@ -126,6 +126,94 @@ async def vector_search(input: str) -> str:
     return top_docs
 
 
+async def vector_search_with_comparison(input: str):
+    # 1. 초기 검색
+    original_docs: list[Document] = await retriever.ainvoke(input)
+    original_context = "\n---\n".join([doc.page_content for doc in original_docs[:3]])
+
+    # 2. ReRank
+    rerank_prompt = PromptTemplate.from_template(
+        """
+    사용자 질문:
+    {query}
+
+    검색된 문서들:
+    {documents}
+
+    --- 출력 포맷 ---
+    문서 내용만 줄바꿈 기준으로 정렬된 텍스트로 반환하세요.
+    """
+    )
+
+    joined_docs = "\n".join([doc.page_content for doc in original_docs])
+    rerank_chain = rerank_prompt | llm | StrOutputParser()
+    reranked_text = await rerank_chain.ainvoke(
+        {"query": input, "documents": joined_docs}
+    )
+    reranked_lines = reranked_text.strip().split("\n")
+    reranked_context = "\n---\n".join(reranked_lines[:3])
+
+    # 3. LLM으로 두 답변 비교
+    answer_prompt = PromptTemplate.from_template(
+        """
+    문맥:
+    {context}
+
+    질문:
+    {question}
+
+    답변을 생성하세요.
+    """
+    )
+
+    answer_chain = answer_prompt | llm | StrOutputParser()
+
+    print("\n▶ ReRank 전 답변:")
+    original_answer = await answer_chain.ainvoke(
+        {"context": original_context, "question": input}
+    )
+    print(original_answer)
+
+    print("\n▶ ReRank 후 답변:")
+    reranked_answer = await answer_chain.ainvoke(
+        {"context": reranked_context, "question": input}
+    )
+    print(reranked_answer)
+
+    # 4. 선택 평가 (추후 human eval, or GPT judge 도 가능)
+    return {
+        "original_answer": original_answer,
+        "reranked_answer": reranked_answer,
+    }
+
+
+async def evaluate_answers(query, original_answer, reranked_answer):
+    judge_prompt = PromptTemplate.from_template(
+        """
+    질문: {query}
+
+    [A] {original}
+    [B] {reranked}
+
+    두 답변 중 질문에 더 적절한 것을 고르세요. A 또는 B 중 하나만 선택하세요.
+    """
+    )
+    judge_chain = judge_prompt | llm | StrOutputParser()
+    decision = await judge_chain.ainvoke(
+        {"query": query, "original": original_answer, "reranked": reranked_answer}
+    )
+    print("\n✅ 평가 결과: 더 나은 답변 →", decision)
+    return decision
+
+
+async def test_rerank_comparison():
+    query = "아이들이 먹기 안전한 과자 알려줘"
+    answers = await vector_search_with_comparison(query)
+    await evaluate_answers(
+        query, answers["original_answer"], answers["reranked_answer"]
+    )
+
+
 store = {}
 decision_maker_output_parser = JsonOutputParser(pydantic_object=Decision_maker)
 format_instructions = decision_maker_output_parser.get_format_instructions()
@@ -255,10 +343,21 @@ if __name__ == "__main__":
         result_state = await llm_answer(state)
         print("답변:\n", result_state["answer"])
 
+    async def test_rerank_comparison():
+        print("\n🧪 [ReRank 비교 및 평가 테스트]")
+        query = "아이들이 먹기 안전한 과자 알려줘"
+        answers = await vector_search_with_comparison(query)
+        await evaluate_answers(
+            query, answers["original_answer"], answers["reranked_answer"]
+        )
+
     async def main():
         await test_sql_agent()
         await test_vector_search()
         await test_decision_maker()
         await test_llm_answer()
+
+        print("\n🧪 [ReRank 비교 및 평가 테스트]")
+        await test_rerank_comparison()
 
     asyncio.run(main())
