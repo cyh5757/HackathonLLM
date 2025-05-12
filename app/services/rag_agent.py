@@ -1,6 +1,7 @@
 import logging
 import sys
 from langchain_postgres import PGVector
+from app.api.dto.models import Decision_maker, GraphState
 from app.repository import pgvector_repository
 from app.services.rag_service_test import SNACK_RAG_PROMPT
 from langchain_core.prompts import ChatPromptTemplate
@@ -84,28 +85,10 @@ retriever = vector_store.as_retriever(search_kwargs={"k": 5})
 
 
 async def vector_search(input: str) -> str:
+    # 1. 벡터로 초기 검색
     docs: list[Document] = await retriever.ainvoke(input)
     return "\n---\n".join([doc.page_content for doc in docs])
 
-async def vector_search_rerank(input: str) -> str:
-    docs: list[Document] = await retriever.ainvoke(input)
-    
-    reranked = []
-    for doc in docs:
-        try:
-            response = await (rerank_prompt | llm).ainvoke({"query": input, "document": doc.page_content})
-            score_str = response.content.split("점수:")[1].split(",")[0].strip()
-            score = float(score_str)
-        except Exception:
-            score = 0.0
-
-        reranked.append((doc, score))
-
-    # 점수 기준 내림차순 정렬
-    reranked.sort(key=lambda x: x[1], reverse=True)
-    top_docs = reranked[:5]
-
-    return "\n---\n".join([doc.page_content for doc, _ in top_docs])
 
 class Decision_maker(BaseModel):
     reference: str = Field(
@@ -254,10 +237,21 @@ if __name__ == "__main__":
         result_state = await llm_answer(state)
         print("답변:\n", result_state["answer"])
 
+    async def test_rerank_comparison():
+        print("\n🧪 [ReRank 비교 및 평가 테스트]")
+        query = "아이들이 먹기 안전한 과자 알려줘"
+        answers = await vector_search_with_comparison(query)
+        await evaluate_answers(
+            query, answers["original_answer"], answers["reranked_answer"]
+        )
+
     async def main():
         await test_sql_agent()
         await test_vector_search()
         await test_decision_maker()
         await test_llm_answer()
+
+        print("\n🧪 [ReRank 비교 및 평가 테스트]")
+        await test_rerank_comparison()
 
     asyncio.run(main())
