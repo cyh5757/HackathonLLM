@@ -1,7 +1,8 @@
 from typing import Any, List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from langchain_core.documents import Document
+from typing import TypedDict
 
 
 class SimpleResponseMessage(BaseModel):
@@ -40,3 +41,15 @@ class SnackContextPayload(BaseModel):
 class SnackRagResponseChunk(BaseModel):
     status: str
     data: str
+
+
+class Decision_maker(BaseModel):
+    reference: str = Field(
+        description="Choose the most relevant reference from multiple sources and organize it for LLM to use as final reference material."
+    )
+
+
+class GraphState(TypedDict):
+    question: str
+    context: list | str
+    organize_reference: str

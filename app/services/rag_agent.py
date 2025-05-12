@@ -1,6 +1,7 @@
 import logging
 import sys
 from langchain_postgres import PGVector
+from app.api.dto.models import Decision_maker, GraphState
 from app.repository import pgvector_repository
 from app.services.rag_service_test import SNACK_RAG_PROMPT
 from langchain_core.prompts import ChatPromptTemplate
@@ -83,20 +84,46 @@ retriever = vector_store.as_retriever(search_kwargs={"k": 5})
 
 
 async def vector_search(input: str) -> str:
+    # 1. 벡터로 초기 검색
     docs: list[Document] = await retriever.ainvoke(input)
-    return "\n---\n".join([doc.page_content for doc in docs])
 
+    print("\n🧪 [ReRank 전 초기 검색 결과]")
+    for i, doc in enumerate(docs):
+        print(f"{i+1}. {doc.page_content[:100]}...")  # 긴 경우 일부만
 
-class Decision_maker(BaseModel):
-    reference: str = Field(
-        description="Choose the most relevant reference from multiple sources and organize it for LLM to use as final reference material."
+    # 2. 재랭크 프롬프트 구성
+    rerank_prompt = PromptTemplate.from_template(
+        """
+    아래는 사용자의 질문과 벡터 검색을 통해 검색된 문서 목록입니다.
+    문서들의 관련성을 평가하여 관련도가 가장 높은 순서로 정렬해 주세요.
+    맨 위에 올수록 관련도가 높다고 판단됩니다.
+
+    사용자 질문:
+    {query}
+
+    검색된 문서들:
+    {documents}
+
+    --- 출력 포맷 ---
+    문서 내용만 줄바꿈 기준으로 정렬된 텍스트로 반환하세요.
+    """
     )
 
+    joined_docs = "\n".join([doc.page_content for doc in docs])
+    rerank_chain = rerank_prompt | llm | StrOutputParser()
 
-class GraphState(TypedDict):
-    question: str
-    context: list | str
-    organize_reference: str
+    reranked_text = await rerank_chain.ainvoke(
+        {"query": input, "documents": joined_docs}
+    )
+
+    print("\n🧪 [ReRank 후 정렬 결과]")
+    for i, line in enumerate(reranked_text.strip().split("\n")):
+        print(f"{i+1}. {line[:100]}...")
+
+    # 3. 최종 상위 N개 문서 추출
+    reranked_lines = reranked_text.strip().split("\n")
+    top_docs = "\n---\n".join(reranked_lines[:3])
+    return top_docs
 
 
 store = {}
