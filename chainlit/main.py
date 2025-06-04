@@ -3,7 +3,7 @@ import traceback
 
 import httpx
 import json
-
+#chainlit run chainlit\main.py --port 8501   
 # SSE용 엔드포인트
 SSE_API_URL = "http://localhost:8000/api/v1/snacks/sse"
 # RAG용 엔드포인트
