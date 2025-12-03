@@ -79,7 +79,7 @@ load-dotenv==0.1.0
 lz4==4.4.4
 MarkupSafe==3.0.2
 marshmallow==3.26.1
-mcp==1.6.0
+mcp==1.10.0
 mmh3==4.1.0
 monotonic==1.6
 more-itertools==10.7.0
